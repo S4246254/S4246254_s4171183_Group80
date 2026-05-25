@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Landing — Victorian Road Incidents{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-badge">Level 1 — Sub-Task A</div>
+  <h1>Understanding Road Incidents in Victoria</h1>
+  <p class="hero-sub">
+    Explore data-driven insights into road crashes across Victoria,
+    helping researchers and policy analysts understand the environmental
+    conditions that contribute to road incidents.
+  </p>
+</section>
+
+<!-- Key facts retrieved from database -->
+<section class="section">
+  <h2 class="section-title">Key facts</h2>
+  <p class="section-sub">Retrieved from the road incidents database.</p>
+  <div class="stat-grid">
+    {% for fact in facts %}
+    <div class="stat-card">
+      <div class="stat-label">{{ fact.LABEL }}</div>
+      <div class="stat-value">{{ fact.VALUE }}</div>
+      <div class="stat-desc">{{ fact.DESCRIPTION }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Navigation cards -->
+<section class="section">
+  <h2 class="section-title">Explore the data</h2>
+  <div class="nav-cards">
+    <a href="{{ url_for('conditions') }}" class="nav-card">
+      <div class="nav-card-icon">&#9776;</div>
+      <div class="nav-card-title">Level 2 — Conditions summary</div>
+      <div class="nav-card-desc">Filter and compare accident counts by road surface, atmospheric or light conditions.</div>
+    </a>
+    <a href="{{ url_for('deepdive') }}" class="nav-card nav-card-amber">
+      <div class="nav-card-icon">&#9650;</div>
+      <div class="nav-card-title">Level 3 — Deep dive</div>
+      <div class="nav-card-desc">Discover above-average risk conditions using nested SQL queries and severity ranking.</div>
+    </a>
+  </div>
+</section>
+{% endblock %}

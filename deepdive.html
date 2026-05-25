@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Deep Dive — Level 3{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div class="page-badge amber">Level 3 — Sub-Task A</div>
+  <h1>Above-Average Risk Conditions</h1>
+  <p class="page-sub">
+    Identifies conditions where accident counts exceed the statewide per-condition
+    average. Uses a nested SQL query — the outer query filters on results produced
+    by an inner average calculation — to discover new facts beyond simple totals.
+  </p>
+</section>
+
+<section class="section">
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label for="l3dim">Condition dimension</label>
+      <select id="l3dim">
+        <option value="road">Road surface</option>
+        <option value="atmos">Atmospheric</option>
+        <option value="light">Light conditions</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="l3sev">Severity filter</label>
+      <select id="l3sev">
+        <option value="false">All above average</option>
+        <option value="true">High severity only (avg &lt; 2.5)</option>
+      </select>
+    </div>
+    <button class="btn-primary" onclick="loadLevel3()">Apply filters</button>
+  </div>
+
+  <!-- SQL pseudocode shown to user -->
+  <div class="sql-box">
+    <div class="sql-label">Nested query logic</div>
+    <pre id="sqlDisplay">SELECT condition, total, avg_severity
+FROM (inner summary per condition)
+WHERE total &gt; (SELECT AVG(count) FROM (grouped counts))
+ORDER BY avg_severity ASC</pre>
+  </div>
+
+  <div id="l3-insight" class="insight-box hidden"></div>
+
+  <div class="table-wrap">
+    <table id="l3table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Condition</th>
+          <th>Total accidents</th>
+          <th>Fatal incidents</th>
+          <th>Fatal rate</th>
+          <th>Avg severity</th>
+          <th>Risk level</th>
+        </tr>
+      </thead>
+      <tbody id="l3tbody">
+        <tr><td colspan="7" class="loading">Loading data&hellip;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="chart-wrap" style="margin-top: 2rem;">
+    <h3 class="chart-title">Severity index vs statewide average</h3>
+    <div class="chart-legend">
+      <span class="legend-item"><span class="legend-dot red"></span>High risk (above avg)</span>
+      <span class="legend-item"><span class="legend-dot blue"></span>Moderate risk (above avg)</span>
+      <span class="legend-item"><span class="legend-dot gray"></span>Statewide average line</span>
+    </div>
+    <canvas id="l3chart" role="img" aria-label="Horizontal bar chart showing average severity per condition with statewide average reference line"></canvas>
+  </div>
+  <p class="table-note">
+    Only conditions exceeding the statewide average accident count are shown.
+    Avg severity: 1 = Fatal, 2 = Serious injury, 3 = Other injury, 4 = Property damage only.
+    Lower avg severity score = more severe conditions.
+  </p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/deepdive.js') }}"></script>
+{% endblock %}

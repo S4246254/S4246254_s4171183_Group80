@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Conditions Summary — Level 2{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div class="page-badge">Level 2 — Sub-Task A</div>
+  <h1>Accident Summary by Conditions</h1>
+  <p class="page-sub">
+    Select a condition type and minimum accident threshold to view an
+    aggregated summary. Data is joined, grouped, filtered and sorted
+    using SQL queries across the accident database.
+  </p>
+</section>
+
+<section class="section">
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label for="condType">Condition type</label>
+      <select id="condType">
+        <option value="road">Road surface</option>
+        <option value="atmos">Atmospheric conditions</option>
+        <option value="light">Light conditions</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="minCount">Minimum accidents</label>
+      <select id="minCount">
+        <option value="0">All</option>
+        <option value="100">100+</option>
+        <option value="300">300+</option>
+        <option value="500">500+</option>
+      </select>
+    </div>
+    <button class="btn-primary" onclick="loadLevel2()">Apply filters</button>
+  </div>
+
+  <div id="l2-insight" class="insight-box hidden"></div>
+
+  <div class="chart-wrap">
+    <canvas id="l2chart" role="img" aria-label="Bar chart of accident counts by selected condition"></canvas>
+  </div>
+
+  <div class="table-wrap">
+    <table id="l2table">
+      <thead>
+        <tr>
+          <th>Condition</th>
+          <th>Total accidents</th>
+          <th>Fatal incidents</th>
+          <th>Fatal rate</th>
+          <th>Avg severity</th>
+        </tr>
+      </thead>
+      <tbody id="l2tbody">
+        <tr><td colspan="5" class="loading">Loading data&hellip;</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="table-note">
+    Data aggregated across the ACCIDENT table, grouped by the selected condition.
+    NULL and blank values excluded. Sorted by total accidents descending.
+  </p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/conditions.js') }}"></script>
+{% endblock %}
