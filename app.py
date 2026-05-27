@@ -51,7 +51,6 @@ def deepdive():
     """Level 3 — Deep dive page."""
     return render_template("deepdive.html")
 
-
 # ------------------------------------------------------------------ #
 # API routes (called by JS fetch)
 # ------------------------------------------------------------------ #
