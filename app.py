@@ -1,6 +1,14 @@
 """
 app.py — Main Flask application for Sub-Task A: Road Incidents Explorer
+
 Covers Level 1 (Landing), Level 2 (Conditions Summary), Level 3 (Deep Dive)
+
+Updated to work with the real Victorian road-accidents database schema:
+  - Road surface is stored in Surface_Cond_Seq + Road_Surface_Cond (M:M)
+  - Atmospheric condition is in Atmospheric_Cond_Seq + Amospheric_Cond (M:M)
+  - Light condition is a FK on Accident.LIGHT_CONDITION -> Light_Condition
+  - Severity is derived from Person.INJ_LEVEL (1=Fatality … 4=Not injured)
+  - Fatalities are counted as Person rows with INJ_LEVEL = 1
 """
 
 from flask import Flask, render_template, jsonify, request
@@ -13,7 +21,7 @@ from database.setup_db import get_db, setup, DB_PATH
 
 app = Flask(__name__)
 
-# Create DB if it doesn't exist yet
+# Create / seed FACTS if the DB doesn't exist yet
 if not os.path.exists(DB_PATH):
     setup()
 
@@ -21,8 +29,9 @@ if not os.path.exists(DB_PATH):
 # ------------------------------------------------------------------ #
 # Helper
 # ------------------------------------------------------------------ #
+
 def query_db(sql, args=()):
-    """Execute a SELECT query and return list of dicts."""
+    """Execute a SELECT query and return a list of dicts."""
     conn = get_db()
     rows = conn.execute(sql, args).fetchall()
     conn.close()
@@ -35,7 +44,7 @@ def query_db(sql, args=()):
 
 @app.route("/")
 def landing():
-    """Level 1 — Landing page. Facts retrieved from DB."""
+    """Level 1 — Landing page. Facts retrieved from FACTS table in DB."""
     facts = query_db("SELECT LABEL, VALUE, DESCRIPTION FROM FACTS")
     return render_template("landing.html", facts=facts)
 
@@ -51,70 +60,132 @@ def deepdive():
     """Level 3 — Deep dive page."""
     return render_template("deepdive.html")
 
+
 # ------------------------------------------------------------------ #
-# API routes (called by JS fetch)
+# Dimension config
+#
+# Each dimension maps to a SQL fragment that produces two columns:
+#   condition  — the human-readable label
+#   accident_no — the accident identifier (for joining / grouping)
+#
+# Road surface and atmospheric condition use junction tables (M:M).
+# Light condition is a direct FK on the Accident table.
 # ------------------------------------------------------------------ #
 
-VALID_COLS = {
-    "road":  "ROAD_SURFACE",
-    "atmos": "ATMOSPHERIC",
-    "light": "LIGHT_COND",
+# Validated dimension keys — never accept raw user input in SQL
+VALID_DIMS = {"road", "atmos", "light"}
+
+DIM_JOIN = {
+    # dim_key: (join_sql, group_column_expr, human_label_expr)
+    "road": (
+        """
+        JOIN Surface_Cond_Seq scs ON a.ACCIDENT_NO = scs.ACCIDENT_NO
+        JOIN Road_Surface_Cond rsc ON scs.SURFACE_COND = rsc.SURFACE_COND
+        """,
+        "rsc.SURFACE_COND_DESC",
+        "rsc.SURFACE_COND_DESC",
+        "rsc.SURFACE_COND_DESC NOT IN ('Unk.')",          # exclude unknowns
+    ),
+    "atmos": (
+        """
+        JOIN Atmospheric_Cond_Seq acs ON a.ACCIDENT_NO = acs.ACCIDENT_NO
+        JOIN Amospheric_Cond ac ON acs.ATMOSPH_COND = ac.ATMOSPH_COND
+        """,
+        "ac.ATMOSPH_COND_DESC",
+        "ac.ATMOSPH_COND_DESC",
+        "ac.ATMOSPH_COND_DESC != 'Not known'",
+    ),
+    "light": (
+        """
+        JOIN Light_Condition lc ON a.LIGHT_CONDITION = lc.COND_ID
+        """,
+        "lc.COND_NAME",
+        "lc.COND_NAME",
+        "lc.COND_NAME != 'Unknown'",
+    ),
 }
 
+
+# ------------------------------------------------------------------ #
+# API — Level 2
+# ------------------------------------------------------------------ #
 
 @app.route("/api/level2")
 def api_level2():
     """
     Level 2: Aggregate accident counts by a chosen condition column.
-    Joins, aggregates, filters and sorts — satisfies spec requirements.
+
+    For each condition value, returns:
+      - total_accidents  (COUNT of distinct accidents)
+      - fatal_count      (accidents with at least one fatality)
+      - avg_persons      (average number of persons involved)
+      - fatal_pct        (percentage of accidents with a fatality)
+
+    Uses JOIN, GROUP BY, HAVING, ORDER BY, COUNT, AVG, SUM.
+
     Query params:
-        dim      = road | atmos | light
-        min_count = integer (minimum accidents to include)
+      dim       = road | atmos | light
+      min_count = integer — minimum accidents to include (default 0)
     """
     dim = request.args.get("dim", "road")
-    min_count = int(request.args.get("min_count", 0))
+    if dim not in VALID_DIMS:
+        return jsonify({"error": "Invalid dimension"}), 400
 
-    col = VALID_COLS.get(dim, "ROAD_SURFACE")
+    min_count = max(0, int(request.args.get("min_count", 0)))
+
+    join_sql, group_col, label_col, exclude_filter = DIM_JOIN[dim]
 
     sql = f"""
         SELECT
-            {col}                          AS condition,
-            COUNT(*)                       AS total_accidents,
-            SUM(FATALITY)                  AS fatal_count,
-            ROUND(AVG(SEVERITY), 2)        AS avg_severity,
+            {label_col}                                           AS condition,
+            COUNT(DISTINCT a.ACCIDENT_NO)                         AS total_accidents,
+            SUM(CASE WHEN a.NO_PERSONS_KILLED > 0 THEN 1 ELSE 0 END)
+                                                                  AS fatal_count,
+            ROUND(AVG(a.NO_PERSONS), 2)                           AS avg_persons,
             ROUND(
-                100.0 * SUM(FATALITY) / COUNT(*), 2
-            )                              AS fatal_pct
-        FROM ACCIDENT
-        WHERE {col} IS NOT NULL
-          AND {col} != ''
-        GROUP BY {col}
-        HAVING COUNT(*) >= ?
+                100.0 * SUM(CASE WHEN a.NO_PERSONS_KILLED > 0 THEN 1 ELSE 0 END)
+                      / COUNT(DISTINCT a.ACCIDENT_NO),
+                2
+            )                                                     AS fatal_pct
+        FROM Accident a
+        {join_sql}
+        WHERE {exclude_filter}
+        GROUP BY {group_col}
+        HAVING COUNT(DISTINCT a.ACCIDENT_NO) >= ?
         ORDER BY total_accidents DESC
     """
     rows = query_db(sql, (min_count,))
     return jsonify(rows)
 
 
+# ------------------------------------------------------------------ #
+# API — Level 3
+# ------------------------------------------------------------------ #
+
 @app.route("/api/level3")
 def api_level3():
     """
     Level 3: Identify conditions whose accident count is ABOVE the
-    statewide per-condition average — using a nested (subquery) approach.
+    statewide per-condition average — nested subquery approach.
 
-    Outer query filters on the result of the inner average calculation,
-    then ranks by severity index descending.
+    The outer query filters on the result of the inner average
+    calculation, then ranks by fatality percentage descending.
+
+    Also returns the statewide average for the chart reference line.
 
     Query params:
-        dim       = road | atmos | light
-        high_only = true  (optional — only show high-severity results)
+      dim       = road | atmos | light
+      high_only = true — only show conditions with fatal_pct > 0
     """
     dim = request.args.get("dim", "road")
+    if dim not in VALID_DIMS:
+        return jsonify({"error": "Invalid dimension"}), 400
+
     high_only = request.args.get("high_only", "false").lower() == "true"
 
-    col = VALID_COLS.get(dim, "ROAD_SURFACE")
+    join_sql, group_col, label_col, exclude_filter = DIM_JOIN[dim]
 
-    sev_filter = "AND avg_severity < 2.5" if high_only else ""
+    high_only_filter = "AND fatal_pct > 0" if high_only else ""
 
     sql = f"""
         SELECT
@@ -122,43 +193,52 @@ def api_level3():
             total_accidents,
             fatal_count,
             fatal_pct,
-            avg_severity,
-            RANK() OVER (ORDER BY avg_severity ASC) AS severity_rank
+            avg_persons,
+            RANK() OVER (ORDER BY fatal_pct DESC) AS severity_rank
         FROM (
-            -- Inner query: summarise per condition
+            -- Inner summary: one row per condition
             SELECT
-                {col}                             AS condition,
-                COUNT(*)                          AS total_accidents,
-                SUM(FATALITY)                     AS fatal_count,
-                ROUND(100.0 * SUM(FATALITY) / COUNT(*), 2) AS fatal_pct,
-                ROUND(AVG(SEVERITY), 2)           AS avg_severity
-            FROM ACCIDENT
-            WHERE {col} IS NOT NULL AND {col} != ''
-            GROUP BY {col}
+                {label_col}                                           AS condition,
+                COUNT(DISTINCT a.ACCIDENT_NO)                         AS total_accidents,
+                SUM(CASE WHEN a.NO_PERSONS_KILLED > 0 THEN 1 ELSE 0 END)
+                                                                      AS fatal_count,
+                ROUND(
+                    100.0 * SUM(CASE WHEN a.NO_PERSONS_KILLED > 0 THEN 1 ELSE 0 END)
+                          / COUNT(DISTINCT a.ACCIDENT_NO),
+                    2
+                )                                                     AS fatal_pct,
+                ROUND(AVG(a.NO_PERSONS), 2)                           AS avg_persons
+            FROM Accident a
+            {join_sql}
+            WHERE {exclude_filter}
+            GROUP BY {group_col}
         ) inner_summary
         WHERE total_accidents > (
-            -- Nested subquery: statewide average count per condition
+            -- Nested subquery: statewide average accident count per condition
             SELECT AVG(cond_count)
             FROM (
-                SELECT COUNT(*) AS cond_count
-                FROM ACCIDENT
-                WHERE {col} IS NOT NULL AND {col} != ''
-                GROUP BY {col}
+                SELECT COUNT(DISTINCT a.ACCIDENT_NO) AS cond_count
+                FROM Accident a
+                {join_sql}
+                WHERE {exclude_filter}
+                GROUP BY {group_col}
             )
         )
-        {sev_filter}
-        ORDER BY avg_severity ASC
+        {high_only_filter}
+        ORDER BY fatal_pct DESC
     """
+
     rows = query_db(sql)
 
-    # Also return the statewide average for reference line in chart
+    # Statewide average for the chart reference line
     avg_sql = f"""
         SELECT AVG(cond_count) AS statewide_avg
         FROM (
-            SELECT COUNT(*) AS cond_count
-            FROM ACCIDENT
-            WHERE {col} IS NOT NULL AND {col} != ''
-            GROUP BY {col}
+            SELECT COUNT(DISTINCT a.ACCIDENT_NO) AS cond_count
+            FROM Accident a
+            {join_sql}
+            WHERE {exclude_filter}
+            GROUP BY {group_col}
         )
     """
     avg_row = query_db(avg_sql)
@@ -170,5 +250,6 @@ def api_level3():
 # ------------------------------------------------------------------ #
 # Run
 # ------------------------------------------------------------------ #
+
 if __name__ == "__main__":
     app.run(debug=True)
