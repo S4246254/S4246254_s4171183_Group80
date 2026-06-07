@@ -323,3 +323,80 @@ td.loading { color: var(--text-muted); font-size: 13px; text-align: center; padd
 /* ---- Bar viz in table ---- */
 .bar-wrap { display: flex; align-items: center; gap: 6px; }
 .inline-bar { height: 8px; border-radius: 3px; background: var(--blue-mid); min-width: 2px; }
+
+/* ---- Mission Statement page ---- */
+.ms-hero {
+  background: #d6dfe6;
+  border-radius: var(--radius-lg);
+  padding: 3rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  margin-bottom: 1.5rem;
+  min-height: 200px;
+}
+
+.ms-hero-label {
+  font-size: 22px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray-800);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ms-hero-content {
+  flex: 1;
+  min-height: 120px;
+}
+
+.ms-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 1.5rem;
+}
+
+.ms-card {
+  background: #fff;
+  border: 2px solid #3a9e8f;
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.25rem 3rem;
+  min-height: 180px;
+}
+
+.ms-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-800);
+}
+
+.ms-footer {
+  padding: 0.5rem 0 1rem;
+}
+
+.ms-footer-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.ms-footer-buttons {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ms-student-btn {
+  border: 2px solid var(--gray-800);
+  border-radius: 30px;
+  padding: 8px 28px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-800);
+}

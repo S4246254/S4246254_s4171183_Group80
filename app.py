@@ -60,7 +60,9 @@ def deepdive():
     """Level 3 — Deep dive page."""
     return render_template("deepdive.html")
 
-
+@app.route("/mission-statement")
+def mission_statement():
+    return render_template("mission_statement.html")
 # ------------------------------------------------------------------ #
 # Dimension config
 #
