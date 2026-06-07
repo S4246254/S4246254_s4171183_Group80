@@ -18,8 +18,9 @@
         <a href="{{ url_for('landing') }}"    class="{% if request.endpoint == 'landing'    %}active{% endif %}">Landing</a>
         <a href="{{ url_for('conditions') }}" class="{% if request.endpoint == 'conditions' %}active{% endif %}">Conditions</a>
         <a href="{{ url_for('deepdive') }}"   class="{% if request.endpoint == 'deepdive'   %}active{% endif %}">Deep Dive</a>
-        <a href="{{ url_for('mission_statement') }}" class="{% if request.endpoint == 'mission_statement' %}active{% endif %}">Mission</a>
         <a href="{{ url_for('focused_view') }}" class="{% if request.endpoint == 'focused_view' %}active{% endif %}">People & Injuries</a>
+        <a href="{{ url_for('mission_statement') }}" class="{% if request.endpoint == 'mission_statement' %}active{% endif %}">Mission</a>
+        <a href="{{ url_for('people_hotspot') }}" class="{% if request.endpoint == 'people_hotspot' %}active{% endif %}">Hotspot Map</a>
       </nav>
     </div>
   </header>

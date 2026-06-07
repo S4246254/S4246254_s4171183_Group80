@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}People Hotspot Map — Victorian Road Incidents{% endblock %}
+
+{% block content %}
+<div class="hs-page">
+
+  <h1 class="hs-title">People Related Hotspot Map</h1>
+
+  <!-- LGA Density Grid -->
+  <div class="hs-grid-wrap">
+    {% if lga_rows %}
+      <div class="hs-grid">
+        {% for row in lga_rows %}
+        <div class="hs-cell {{ row.density_class }}" title="{{ row.lga_display }}: {{ row.density_str }}">
+          <span class="hs-cell-name">{{ row.lga_display }}</span>
+          <span class="hs-cell-val">{{ row.density_str }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    {% elif submitted %}
+      <p class="hs-grid-placeholder">No results found for the selected filters.</p>
+    {% else %}
+      <p class="hs-grid-placeholder">Select a condition and apply filters to generate the hotspot map.</p>
+    {% endif %}
+  </div>
+
+  <!-- Bottom three panels -->
+  <div class="hs-bottom">
+
+    <!-- Legend -->
+    <div class="hs-legend">
+      <p class="hs-legend-title">Legend:</p>
+      <div class="hs-legend-item"><span class="hs-swatch hs-d5"></span><span>Very High (&gt; 2.0)</span></div>
+      <div class="hs-legend-item"><span class="hs-swatch hs-d4"></span><span>High (1.5 – 2.0)</span></div>
+      <div class="hs-legend-item"><span class="hs-swatch hs-d3"></span><span>Medium (1.0 – 1.5)</span></div>
+      <div class="hs-legend-item"><span class="hs-swatch hs-d2"></span><span>Low (0.5 – 1.0)</span></div>
+      <div class="hs-legend-item"><span class="hs-swatch hs-d1"></span><span>Very Low (&lt; 0.5)</span></div>
+      <p class="hs-legend-note">Density index = LGA count / statewide average</p>
+    </div>
+
+    <!-- Control Center -->
+    <div class="hs-control">
+      <h2 class="hs-control-title">Control Center</h2>
+      <form method="GET" action="{{ url_for('people_hotspot') }}">
+
+        <div class="hs-control-sentence">
+          Show me location densities where
+          <select class="hs-select" name="condition">
+            <option value="injury"      {% if condition == 'injury'      %}selected{% endif %}>Injury Level</option>
+            <option value="road_user"   {% if condition == 'road_user'   %}selected{% endif %}>Road User Type</option>
+            <option value="ejection"    {% if condition == 'ejection'    %}selected{% endif %}>Ejection Outcome</option>
+            <option value="hospital"    {% if condition == 'hospital'    %}selected{% endif %}>Taken to Hospital</option>
+            <option value="helmet_belt" {% if condition == 'helmet_belt' %}selected{% endif %}>Helmet / Belt Worn</option>
+            <option value="age_group"   {% if condition == 'age_group'   %}selected{% endif %}>Age Group</option>
+            <option value="sex"         {% if condition == 'sex'         %}selected{% endif %}>Sex</option>
+          </select>
+          is
+        </div>
+
+        {% if show_second %}
+        <div class="hs-control-sentence">
+          <select class="hs-select" name="condition_value">
+            {% for opt in current_options %}
+            <option value="{{ opt.val }}" {% if condition_value == opt.val|string %}selected{% endif %}>{{ opt.label }}</option>
+            {% endfor %}
+          </select>
+          during time period
+          <span class="hs-year-display" id="hsYearDisplay">{{ year_min }} – {{ year_max }}</span>
+        </div>
+
+        <div class="hs-slider-wrap">
+          <div class="hs-slider-track">
+            <div class="hs-slider-range" id="hsSliderRange"></div>
+          </div>
+          <input type="range" class="hs-range" id="hsYearMin" name="year_min" min="2013" max="2024" value="{{ year_min }}" step="1">
+          <input type="range" class="hs-range" id="hsYearMax" name="year_max" min="2013" max="2024" value="{{ year_max }}" step="1">
+        </div>
+        {% endif %}
+
+        <div class="hs-ctrl-buttons">
+          {% if not show_second %}
+          <button type="submit" name="select_condition" value="1" class="hs-btn-confirm">Confirm</button>
+          {% else %}
+          <button type="submit" name="applied" value="1" class="hs-btn-apply">Apply Filters</button>
+          <a href="{{ url_for('people_hotspot') }}" class="hs-btn-clear">Reset Filters</a>
+          {% endif %}
+        </div>
+
+      </form>
+    </div>
+
+    <!-- Summary -->
+    <div class="hs-summary">
+      <p class="hs-summary-title">Summary:</p>
+      {% if summary %}
+      <p class="hs-summary-text">{{ summary | safe }}</p>
+      {% else %}
+      <p class="hs-summary-text">Apply filters to generate a density summary.</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const hsMin     = document.getElementById('hsYearMin');
+  const hsMax     = document.getElementById('hsYearMax');
+  const hsDisplay = document.getElementById('hsYearDisplay');
+  const hsRange   = document.getElementById('hsSliderRange');
+
+  if (hsMin && hsMax) {
+    function updateHsSlider() {
+      let minVal = parseInt(hsMin.value);
+      let maxVal = parseInt(hsMax.value);
+
+      if (minVal > maxVal) {
+        [hsMin.value, hsMax.value] = [maxVal, minVal];
+        [minVal, maxVal] = [maxVal, minVal];
+      }
+
+      hsDisplay.textContent = minVal + ' – ' + maxVal;
+
+      const min      = parseInt(hsMin.min);
+      const max      = parseInt(hsMin.max);
+      const leftPct  = ((minVal - min) / (max - min)) * 100;
+      const rightPct = ((maxVal - min) / (max - min)) * 100;
+
+      hsRange.style.left  = leftPct  + '%';
+      hsRange.style.width = (rightPct - leftPct) + '%';
+    }
+
+    hsMin.addEventListener('input', updateHsSlider);
+    hsMax.addEventListener('input', updateHsSlider);
+    updateHsSlider();
+  }
+</script>
+{% endblock %}

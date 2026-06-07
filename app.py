@@ -267,6 +267,165 @@ def mission_statement():
         persona_b       = persona_map.get("b"),
         team            = team,
     )
+
+@app.route("/people-hotspot")
+def people_hotspot():
+
+    injury_opts      = query_db("SELECT INJ_LEVEL AS val, INJ_LEVEL_DESC AS label FROM Injury ORDER BY INJ_LEVEL")
+    road_user_opts   = query_db("SELECT ROAD_USER_TYPE AS val, ROAD_USER_TYPE_DESC AS label FROM Road_User WHERE ROAD_USER_TYPE_DESC != 'Not Known' ORDER BY ROAD_USER_TYPE")
+    ejection_opts    = query_db("SELECT EJECTED_CODE AS val, EJECTED_DESC AS label FROM Ejection WHERE EJECTED_CODE != 9 ORDER BY EJECTED_CODE")
+    helmet_belt_opts = query_db("SELECT HELMET_BELT_WORN AS val, HELMET_BELT_DESC AS label FROM Helmet_Belt WHERE HELMET_BELT_WORN != 9 ORDER BY HELMET_BELT_WORN")
+    age_group_opts   = query_db("""
+        SELECT DISTINCT AGE_GROUP AS val,
+               CASE AGE_GROUP WHEN '5-Dec' THEN '5-12' ELSE AGE_GROUP END AS label
+        FROM Person
+        WHERE AGE_GROUP IS NOT NULL AND AGE_GROUP != '' AND AGE_GROUP != 'Unknown'
+        ORDER BY AGE_GROUP
+    """)
+    hospital_opts = [{"val": "Y", "label": "Yes"}, {"val": "N", "label": "No"}]
+    sex_opts      = [{"val": "M", "label": "Male"}, {"val": "F", "label": "Female"}, {"val": "U", "label": "Unknown"}]
+
+    ALL_OPTS = {
+        "injury":      injury_opts,
+        "road_user":   road_user_opts,
+        "ejection":    ejection_opts,
+        "hospital":    hospital_opts,
+        "helmet_belt": helmet_belt_opts,
+        "age_group":   age_group_opts,
+        "sex":         sex_opts,
+    }
+
+    CONDITION_LABELS = {
+        "injury":      "Injury Level",
+        "road_user":   "Road User Type",
+        "ejection":    "Ejection Outcome",
+        "hospital":    "Taken to Hospital",
+        "helmet_belt": "Helmet / Belt Worn",
+        "age_group":   "Age Group",
+        "sex":         "Sex",
+    }
+
+    CONDITION_WHERE = {
+        "injury":      ("p.INJ_LEVEL = ?",        int),
+        "road_user":   ("p.ROAD_USER_TYPE = ?",   int),
+        "ejection":    ("p.EJECTED_CODE = ?",     int),
+        "hospital":    ("p.TAKEN_HOSPITAL = ?",   str),
+        "helmet_belt": ("p.HELMET_BELT_WORN = ?", int),
+        "age_group":   ("p.AGE_GROUP = ?",        str),
+        "sex":         ("p.SEX = ?",              str),
+    }
+
+    condition       = request.args.get("condition", "injury")
+    condition_value = request.args.get("condition_value", "")
+    year_min        = int(request.args.get("year_min", 2013))
+    year_max        = int(request.args.get("year_max", 2024))
+    show_second = "select_condition" in request.args
+    submitted   = bool(request.args.get("condition_value", "")) and "select_condition" not in request.args and "condition" in request.args
+    condition_chosen = "condition" in request.args
+
+    if condition not in ALL_OPTS:
+        condition = "injury"
+
+    current_options = ALL_OPTS[condition]
+    lga_rows        = []
+    summary         = ""
+
+    if submitted and condition in CONDITION_WHERE:
+        where_clause, cast_fn = CONDITION_WHERE[condition]
+        inner_where           = where_clause.replace("p.", "p2.")
+
+        try:
+            cv = cast_fn(condition_value)
+        except (ValueError, TypeError):
+            cv = condition_value
+
+        if condition == "age_group" and condition_value == "5-12":
+            cv = "5-Dec"
+
+        sql = f"""
+            SELECT
+                lga_name,
+                people_count,
+                ROUND(
+                    CAST(people_count AS FLOAT) / (
+                        SELECT AVG(inner_cnt)
+                        FROM (
+                            SELECT COUNT(*) AS inner_cnt
+                            FROM Person p2
+                            JOIN Accident a2 ON p2.ACCIDENT_NO = a2.ACCIDENT_NO
+                            LEFT JOIN Node n2  ON a2.NODE_ID   = n2.NODE_ID
+                            WHERE {inner_where}
+                            AND CAST(SUBSTR(a2.ACCIDENT_DATE, -4) AS INTEGER) BETWEEN ? AND ?
+                            AND n2.LGA_NAME IS NOT NULL AND n2.LGA_NAME != ''
+                            GROUP BY n2.LGA_NAME
+                        )
+                    ), 2
+                ) AS density_index
+            FROM (
+                SELECT n.LGA_NAME AS lga_name, COUNT(*) AS people_count
+                FROM Person p
+                JOIN Accident a ON p.ACCIDENT_NO = a.ACCIDENT_NO
+                LEFT JOIN Node n ON a.NODE_ID    = n.NODE_ID
+                WHERE {where_clause}
+                AND CAST(SUBSTR(a.ACCIDENT_DATE, -4) AS INTEGER) BETWEEN ? AND ?
+                AND n.LGA_NAME IS NOT NULL AND n.LGA_NAME != ''
+                GROUP BY n.LGA_NAME
+            )
+            ORDER BY density_index DESC
+        """
+
+        params   = [cv, year_min, year_max, cv, year_min, year_max]
+        lga_rows = query_db(sql, params)
+
+        def density_class(idx):
+            if idx is None: return "hs-d1"
+            if idx >= 2.0:  return "hs-d5"
+            if idx >= 1.5:  return "hs-d4"
+            if idx >= 1.0:  return "hs-d3"
+            if idx >= 0.5:  return "hs-d2"
+            return "hs-d1"
+
+        for r in lga_rows:
+            r["density_class"] = density_class(r["density_index"])
+            r["lga_display"]   = r["lga_name"].title()
+            r["density_str"]   = f"{r['density_index']:.2f}" if r["density_index"] else "N/A"
+
+        if lga_rows:
+            above_avg      = [r for r in lga_rows if r["density_index"] and r["density_index"] >= 1.0]
+            top3           = lga_rows[:3]
+            selected_label = condition_value
+
+            for opt in current_options:
+                if str(opt["val"]) == str(condition_value):
+                    selected_label = opt["label"]
+                    break
+
+            summary = (
+                f"Showing LGA density for <strong>{CONDITION_LABELS[condition]}: "
+                f"{selected_label}</strong> between {year_min} and {year_max}. "
+                f"Of {len(lga_rows)} LGAs with recorded incidents, "
+                f"<strong>{len(above_avg)}</strong> exceed the statewide average "
+                f"(density index ≥ 1.0). "
+                f"Highest density LGAs: "
+                f"<strong>{', '.join(r['lga_display'] for r in top3)}</strong> "
+                f"with indices of "
+                f"{', '.join(r['density_str'] for r in top3)} respectively."
+            )
+
+    return render_template(
+        "people_hotspot.html",
+        submitted        = submitted,
+        show_second      = show_second,
+        condition_chosen = condition_chosen,
+        condition        = condition,
+        condition_value  = str(condition_value),
+        year_min         = year_min,
+        year_max         = year_max,
+        current_options  = current_options,
+        lga_rows         = lga_rows,
+        summary          = summary,
+        condition_label  = CONDITION_LABELS.get(condition, "Condition"),
+    )
 # ------------------------------------------------------------------ #
 # Dimension config
 #
