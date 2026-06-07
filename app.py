@@ -17,13 +17,21 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from database.setup_db import get_db, setup, DB_PATH
+from database.setup_db import get_db, setup, DB_PATH, DDL_MISSION_CONTENT, DDL_PERSONAS, DDL_TEAM_MEMBERS, seed_mission
 
 app = Flask(__name__)
 
-# Create / seed FACTS if the DB doesn't exist yet
+# Initialise DB and all required tables on startup
 if not os.path.exists(DB_PATH):
     setup()
+else:
+    _conn = get_db()
+    _conn.execute(DDL_MISSION_CONTENT)
+    _conn.execute(DDL_PERSONAS)
+    _conn.execute(DDL_TEAM_MEMBERS)
+    seed_mission(_conn)
+    _conn.commit()
+    _conn.close()
 
 
 # ------------------------------------------------------------------ #
@@ -62,7 +70,21 @@ def deepdive():
 
 @app.route("/mission-statement")
 def mission_statement():
-    return render_template("mission_statement.html")
+    mission   = query_db("SELECT CONTENT FROM MISSION_CONTENT WHERE SECTION = 'mission'")
+    how_to    = query_db("SELECT CONTENT FROM MISSION_CONTENT WHERE SECTION = 'how_to_use'")
+    personas  = query_db("SELECT * FROM PERSONAS ORDER BY PERSONA_KEY ASC")
+    team      = query_db("SELECT FULL_NAME, STUDENT_ID FROM TEAM_MEMBERS ORDER BY ID ASC")
+
+    persona_map = {p["PERSONA_KEY"]: p for p in personas}
+
+    return render_template(
+        "mission_statement.html",
+        mission_content = mission[0]["CONTENT"]  if mission  else "",
+        how_to_use      = how_to[0]["CONTENT"]   if how_to   else "",
+        persona_a       = persona_map.get("a"),
+        persona_b       = persona_map.get("b"),
+        team            = team,
+    )
 # ------------------------------------------------------------------ #
 # Dimension config
 #

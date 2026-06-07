@@ -1,38 +1,70 @@
 {% extends "base.html" %}
 {% block title %}Mission Statement — Victorian Road Incidents{% endblock %}
- 
+
 {% block content %}
- 
+
 <!-- Hero -->
 <section class="ms-hero">
   <h2 class="ms-hero-label">Mission Statement</h2>
-  <div class="ms-hero-content"></div>
+  <div class="ms-hero-content">
+    {{ mission_content | safe }}
+  </div>
 </section>
- 
+
 <!-- Cards -->
 <div class="ms-cards-grid">
- 
+
+  <!-- How To Use -->
   <div class="ms-card">
     <div class="ms-card-title">How to Use</div>
+    <div class="ms-card-body">
+      {{ how_to_use | safe }}
+    </div>
   </div>
- 
+
+  <!-- Persona A -->
   <div class="ms-card">
     <div class="ms-card-title">Persona A</div>
+    {% if persona_a %}
+    <div class="ms-card-body ms-persona-body">
+      <div class="ms-persona-image">
+        <!-- swap src for actual image path once added to /static -->
+        <img src="{{ url_for('static', filename='images/persona_a.jpg') }}" alt="Photo of {{ persona_a.NAME }}" onerror="this.style.display='none'">
+      </div>
+      <p class="ms-persona-name">{{ persona_a.NAME }}</p>
+      <p class="ms-persona-role">{{ persona_a.ROLE }}</p>
+      <p class="ms-persona-demographics">{{ persona_a.DEMOGRAPHICS }}</p>
+      <p class="ms-persona-description">{{ persona_a.DESCRIPTION }}</p>
+    </div>
+    {% endif %}
   </div>
- 
+
+  <!-- Persona B -->
   <div class="ms-card">
     <div class="ms-card-title">Persona B</div>
+    {% if persona_b %}
+    <div class="ms-card-body ms-persona-body">
+      <div class="ms-persona-image">
+        <img src="{{ url_for('static', filename='images/persona_b.jpg') }}" alt="Photo of {{ persona_b.NAME }}" onerror="this.style.display='none'">
+      </div>
+      <p class="ms-persona-name">{{ persona_b.NAME }}</p>
+      <p class="ms-persona-role">{{ persona_b.ROLE }}</p>
+      <p class="ms-persona-demographics">{{ persona_b.DEMOGRAPHICS }}</p>
+      <p class="ms-persona-description">{{ persona_b.DESCRIPTION }}</p>
+    </div>
+    {% endif %}
   </div>
- 
+
 </div>
- 
+
 <!-- Created By -->
 <div class="ms-footer">
   <p class="ms-footer-label">Created By:</p>
   <div class="ms-footer-buttons">
-    <span class="ms-student-btn">Nevyan John &mdash; s4171183</span>
-    <span class="ms-student-btn">Augusts Ziebell-Barnes &mdash; s4246254</span>
+    {% for member in team %}
+    <span class="ms-student-btn">{{ member.FULL_NAME }} &mdash; {{ member.STUDENT_ID }}</span>
+    {% endfor %}
   </div>
 </div>
- 
+
 {% endblock %}

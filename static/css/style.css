@@ -400,3 +400,19 @@ td.loading { color: var(--text-muted); font-size: 13px; text-align: center; padd
   letter-spacing: 0.05em;
   color: var(--gray-800);
 }
+
+/* ── Persona Images ── */
+.ms-persona-image {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.ms-persona-image img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}

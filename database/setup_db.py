@@ -101,6 +101,118 @@ CREATE TABLE IF NOT EXISTS FACTS (
 );
 """
 
+# ------------------------------------------------------------------ #
+# Mission Statement tables
+# ------------------------------------------------------------------ #
+
+DDL_MISSION_CONTENT = """
+CREATE TABLE IF NOT EXISTS MISSION_CONTENT (
+    ID      INTEGER PRIMARY KEY AUTOINCREMENT,
+    SECTION TEXT NOT NULL UNIQUE,
+    CONTENT TEXT NOT NULL
+);
+"""
+
+DDL_PERSONAS = """
+CREATE TABLE IF NOT EXISTS PERSONAS (
+    ID           INTEGER PRIMARY KEY AUTOINCREMENT,
+    PERSONA_KEY  TEXT NOT NULL UNIQUE,
+    NAME         TEXT NOT NULL,
+    ROLE         TEXT NOT NULL,
+    DEMOGRAPHICS TEXT NOT NULL,
+    DESCRIPTION  TEXT NOT NULL
+);
+"""
+
+DDL_TEAM_MEMBERS = """
+CREATE TABLE IF NOT EXISTS TEAM_MEMBERS (
+    ID         INTEGER PRIMARY KEY AUTOINCREMENT,
+    FULL_NAME  TEXT NOT NULL,
+    STUDENT_ID TEXT NOT NULL
+);
+"""
+
+
+def seed_mission(conn: sqlite3.Connection) -> None:
+    """Seed mission statement, personas, and team members."""
+
+    conn.execute("DELETE FROM MISSION_CONTENT")
+    conn.execute("DELETE FROM PERSONAS")
+    conn.execute("DELETE FROM TEAM_MEMBERS")
+
+    conn.executemany(
+        "INSERT INTO MISSION_CONTENT (SECTION, CONTENT) VALUES (?, ?)",
+        [
+            (
+                "mission",
+                "<p>Victoria's road crash data is public but it's fragmented across agencies, "
+                "inconsistently labelled, and difficult to act on without hours of manual work. "
+                "The Victorian Road Incidents Explorer exists to change that.</p>"
+                "<p>This tool centralises crash data into a single, standardised interface designed "
+                "for the people who need it most: road safety professionals, researchers, and planners "
+                "working to make Victorian roads safer. By making data filterable, visual, and immediately "
+                "usable, we aim to reduce the gap between information and action so less time is spent "
+                "wrestling with spreadsheets, and more time is spent improving outcomes.</p>",
+            ),
+            (
+                "how_to_use",
+                "<p>Use the navigation bar at the top to move between sections of the site.</p>"
+                "<p>The <strong>Conditions</strong> page summarises Victorian crash data by a condition of your choice. "
+                "Select a condition type: road surface, atmospheric condition, or light condition, and set a minimum "
+                "accident threshold, then apply filters to view an aggregated breakdown. Results are displayed as a "
+                "bar chart and a table showing total accidents, fatal incidents, fatal rate, and average severity, "
+                "sorted by total accidents descending.</p>"
+                "<p>The <strong>Deep Dive</strong> page identifies conditions whose accident counts exceed the statewide "
+                "per-condition average, using a nested SQL query to surface above-average risk. Select a condition "
+                "dimension and severity filter to see ranked results alongside a severity index chart that compares "
+                "each condition against the statewide average line.</p>"
+                "<p>Filters can be adjusted and reapplied at any time. All data is drawn from the accident database, "
+                "with unknown and null values excluded from all calculations.</p>",
+            ),
+        ],
+    )
+
+    conn.executemany(
+        "INSERT INTO PERSONAS (PERSONA_KEY, NAME, ROLE, DEMOGRAPHICS, DESCRIPTION) VALUES (?, ?, ?, ?, ?)",
+        [
+            (
+                "a",
+                "Sarah Jenkins",
+                "Senior Road Safety Officer, Regional City Council",
+                "Age 36 · Bachelor of Civil Engineering · Regional Victoria",
+                "Sarah oversees road safety planning for a regional Victorian council, managing "
+                "infrastructure that accounts for the majority of local road deaths. Her work demands "
+                "fast access to localised crash data however existing tools leave her reconciling "
+                "inconsistent formats from multiple state sources before she can even begin analysis. "
+                "She needs a single platform where she can filter crashes by suburb or intersection, "
+                "generate presentation-ready visuals for councillors, and spend her time on engineering "
+                "decisions rather than data administration.",
+            ),
+            (
+                "b",
+                "Ali Abedi",
+                "Road Safety Research Analyst, University of Melbourne",
+                "Age 34 · PhD in Transport Engineering · Transport & Road Safety Research Lab",
+                "Ali has spent six years investigating the infrastructural, environmental, and behavioural "
+                "factors that contribute to crash risk across Victoria's rural and regional road networks. "
+                "His research depends on comprehensive, multi-variable data that can be queried, mapped "
+                "spatially, and analysed across time. He needs a platform that works equally well for "
+                "specialist researchers and the non-technical stakeholders he regularly presents to, "
+                "reliable enough to trust during live briefings, and powerful enough to support "
+                "publication-level analysis.",
+            ),
+        ],
+    )
+
+    conn.executemany(
+        "INSERT INTO TEAM_MEMBERS (FULL_NAME, STUDENT_ID) VALUES (?, ?)",
+        [
+            ("Nevyan John", "s4171183"),
+            ("Augusts Ziebell-Barnes", "s4246254"),
+        ],
+    )
+
+    print("  Seeded MISSION_CONTENT, PERSONAS, TEAM_MEMBERS.")
 
 def seed_facts(conn: sqlite3.Connection) -> None:
     """
@@ -178,7 +290,7 @@ def seed_facts(conn: sqlite3.Connection) -> None:
 # ------------------------------------------------------------------ #
 
 def setup(reset: bool = False) -> None:
-    """Ensure DB exists, create FACTS table, seed it."""
+    """Ensure DB exists, create all tables, seed them."""
     _ensure_db_file()
 
     conn = get_db()
@@ -189,12 +301,21 @@ def setup(reset: bool = False) -> None:
 
         print("Creating FACTS table …")
         conn.execute(DDL_FACTS)
+
+        print("Creating Mission Statement tables …")
+        conn.execute(DDL_MISSION_CONTENT)
+        conn.execute(DDL_PERSONAS)
+        conn.execute(DDL_TEAM_MEMBERS)
+
         conn.commit()
 
         print("Seeding FACTS …")
         seed_facts(conn)
-        conn.commit()
 
+        print("Seeding Mission content …")
+        seed_mission(conn)
+
+        conn.commit()
         print(f"\nDone. Database ready at: {DB_PATH}")
     finally:
         conn.close()
