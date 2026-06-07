@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}People & Injuries — Victorian Road Incidents{% endblock %}
+
+{% block content %}
+
+<div class="fv-progress-wrap">
+  <div class="fv-progress-bar" style="width: {% if rows %}100{% else %}0{% endif %}%"></div>
+</div>
+
+<div class="fv-layout">
+
+  <aside class="fv-panel">
+  <form method="GET" action="{{ url_for('focused_view') }}">
+
+    <h1 class="fv-panel-title">Focused View of People and Injuries Sustained</h1>
+    <p class="fv-panel-desc">
+      Summarise crash outcomes by a people-related condition across a selected time period,
+      with optional filters by road, crash, and environment variables.
+    </p>
+
+    <div class="fv-field">
+      <label class="fv-label">People related condition:</label>
+      <select class="fv-select" name="condition">
+        <option value="injury"      {% if condition == 'injury'      %}selected{% endif %}>Injury Level</option>
+        <option value="road_user"   {% if condition == 'road_user'   %}selected{% endif %}>Road User Type</option>
+        <option value="ejection"    {% if condition == 'ejection'    %}selected{% endif %}>Ejection Outcome</option>
+        <option value="hospital"    {% if condition == 'hospital'    %}selected{% endif %}>Taken to Hospital</option>
+        <option value="helmet_belt" {% if condition == 'helmet_belt' %}selected{% endif %}>Helmet / Belt Worn</option>
+        <option value="age_group"   {% if condition == 'age_group'   %}selected{% endif %}>Age Group</option>
+        <option value="sex"         {% if condition == 'sex'         %}selected{% endif %}>Sex</option>
+      </select>
+    </div>
+
+    <div class="fv-field">
+      <label class="fv-label">Time Period: <span id="yearMinLabel">{{ year_min }}</span> — <span id="yearMaxLabel">{{ year_max }}</span></label>
+      <div class="fv-slider-wrap">
+        <div class="fv-slider-track">
+          <div class="fv-slider-range" id="sliderRange"></div>
+        </div>
+        <input type="range" class="fv-range" id="yearMin" name="year_min" min="2013" max="2024" value="{{ year_min }}" step="1">
+        <input type="range" class="fv-range" id="yearMax" name="year_max" min="2013" max="2024" value="{{ year_max }}" step="1">
+      </div>
+    </div>
+
+    <div class="fv-filters">
+
+      <details class="fv-accordion" open>
+        <summary class="fv-accordion-summary">Road / Location</summary>
+        <div class="fv-accordion-body">
+          <p class="fv-group-label">Road Type</p>
+          <div class="fv-checkbox-group">
+            <label><input type="checkbox" name="road_type" value="HIGHWAY"   {% if 'HIGHWAY'   in road_types %}checked{% endif %}> Highway</label>
+            <label><input type="checkbox" name="road_type" value="FREEWAY"   {% if 'FREEWAY'   in road_types %}checked{% endif %}> Freeway</label>
+            <label><input type="checkbox" name="road_type" value="ROAD"      {% if 'ROAD'      in road_types %}checked{% endif %}> Road</label>
+            <label><input type="checkbox" name="road_type" value="STREET"    {% if 'STREET'    in road_types %}checked{% endif %}> Street</label>
+            <label><input type="checkbox" name="road_type" value="AVENUE"    {% if 'AVENUE'    in road_types %}checked{% endif %}> Avenue</label>
+            <label><input type="checkbox" name="road_type" value="DRIVE"     {% if 'DRIVE'     in road_types %}checked{% endif %}> Drive</label>
+            <label><input type="checkbox" name="road_type" value="BOULEVARD" {% if 'BOULEVARD' in road_types %}checked{% endif %}> Boulevard</label>
+            <label><input type="checkbox" name="road_type" value="LANE"      {% if 'LANE'      in road_types %}checked{% endif %}> Lane</label>
+          </div>
+          <p class="fv-group-label">Speed Zone (km/h)</p>
+          <div class="fv-checkbox-group">
+            {% for sz in ['30','40','50','60','70','80','90','100','110'] %}
+            <label><input type="checkbox" name="speed_zone" value="{{ sz }}" {% if sz in speed_zones %}checked{% endif %}> {{ sz }}</label>
+            {% endfor %}
+          </div>
+          <p class="fv-group-label">Urban Classification</p>
+          <div class="fv-checkbox-group">
+            <label><input type="checkbox" name="deg_urban" value="MELBOURNE_CBD"          {% if 'MELBOURNE_CBD'          in deg_urbans %}checked{% endif %}> Melbourne CBD</label>
+            <label><input type="checkbox" name="deg_urban" value="MELB_URBAN"             {% if 'MELB_URBAN'             in deg_urbans %}checked{% endif %}> Melbourne Urban</label>
+            <label><input type="checkbox" name="deg_urban" value="LARGE_PROVINCIAL_CITIES"{% if 'LARGE_PROVINCIAL_CITIES' in deg_urbans %}checked{% endif %}> Large Provincial Cities</label>
+            <label><input type="checkbox" name="deg_urban" value="SMALL_CITIES"           {% if 'SMALL_CITIES'           in deg_urbans %}checked{% endif %}> Small Cities</label>
+            <label><input type="checkbox" name="deg_urban" value="TOWNS"                  {% if 'TOWNS'                  in deg_urbans %}checked{% endif %}> Towns</label>
+            <label><input type="checkbox" name="deg_urban" value="SMALL_TOWNS"            {% if 'SMALL_TOWNS'            in deg_urbans %}checked{% endif %}> Small Towns</label>
+            <label><input type="checkbox" name="deg_urban" value="RURAL_VICTORIA"         {% if 'RURAL_VICTORIA'         in deg_urbans %}checked{% endif %}> Rural Victoria</label>
+          </div>
+        </div>
+      </details>
+
+      <details class="fv-accordion">
+        <summary class="fv-accordion-summary">Crash Info</summary>
+        <div class="fv-accordion-body">
+          <p class="fv-group-label">Light Condition</p>
+          <div class="fv-checkbox-group">
+            <label><input type="checkbox" name="light" value="1" {% if '1' in lights %}checked{% endif %}> Day</label>
+            <label><input type="checkbox" name="light" value="2" {% if '2' in lights %}checked{% endif %}> Dusk / Dawn</label>
+            <label><input type="checkbox" name="light" value="3" {% if '3' in lights %}checked{% endif %}> Dark — Lights On</label>
+            <label><input type="checkbox" name="light" value="4" {% if '4' in lights %}checked{% endif %}> Dark — Lights Off</label>
+            <label><input type="checkbox" name="light" value="5" {% if '5' in lights %}checked{% endif %}> Dark — No Lights</label>
+          </div>
+          <p class="fv-group-label">Police Attendance</p>
+          <div class="fv-checkbox-group">
+            <label><input type="checkbox" name="police" value="1" {% if '1' in polices %}checked{% endif %}> Attended</label>
+            <label><input type="checkbox" name="police" value="2" {% if '2' in polices %}checked{% endif %}> Not Attended</label>
+          </div>
+        </div>
+      </details>
+
+      <details class="fv-accordion">
+        <summary class="fv-accordion-summary">Environment</summary>
+        <div class="fv-accordion-body">
+          <p class="fv-group-label">Road Surface</p>
+          <div class="fv-checkbox-group">
+            <label><input type="checkbox" name="surface" value="1" {% if '1' in surfaces %}checked{% endif %}> Dry</label>
+            <label><input type="checkbox" name="surface" value="2" {% if '2' in surfaces %}checked{% endif %}> Wet</label>
+            <label><input type="checkbox" name="surface" value="3" {% if '3' in surfaces %}checked{% endif %}> Muddy</label>
+            <label><input type="checkbox" name="surface" value="4" {% if '4' in surfaces %}checked{% endif %}> Snowy</label>
+            <label><input type="checkbox" name="surface" value="5" {% if '5' in surfaces %}checked{% endif %}> Icy</label>
+          </div>
+          <p class="fv-group-label">Atmospheric Condition</p>
+          <div class="fv-checkbox-group">
+            <label><input type="checkbox" name="atmos" value="1" {% if '1' in atmos_conds %}checked{% endif %}> Clear</label>
+            <label><input type="checkbox" name="atmos" value="2" {% if '2' in atmos_conds %}checked{% endif %}> Raining</label>
+            <label><input type="checkbox" name="atmos" value="3" {% if '3' in atmos_conds %}checked{% endif %}> Snowing</label>
+            <label><input type="checkbox" name="atmos" value="4" {% if '4' in atmos_conds %}checked{% endif %}> Fog</label>
+            <label><input type="checkbox" name="atmos" value="5" {% if '5' in atmos_conds %}checked{% endif %}> Smoke</label>
+            <label><input type="checkbox" name="atmos" value="6" {% if '6' in atmos_conds %}checked{% endif %}> Dust</label>
+            <label><input type="checkbox" name="atmos" value="7" {% if '7' in atmos_conds %}checked{% endif %}> Strong Winds</label>
+          </div>
+        </div>
+      </details>
+
+    </div>
+
+    <div class="fv-buttons">
+      <button type="submit" class="fv-btn-apply">Apply Filters</button>
+      <button type="reset"  class="fv-btn-clear">Clear Filters</button>
+    </div>
+
+  </form>
+  </aside>
+
+  <div class="fv-results">
+
+    <div class="fv-results-section">
+      <p class="fv-results-label">Table:</p>
+      {% if rows %}
+      <table>
+        <thead>
+          <tr>
+            <th>{{ condition | replace('_', ' ') | title }}</th>
+            <th>Total People</th>
+            <th>Total Accidents</th>
+            <th>Fatalities</th>
+            <th>Hospitalised</th>
+            <th>% of Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td>{{ row.condition_value }}</td>
+            <td>{{ "{:,}".format(row.total_people) }}</td>
+            <td>{{ "{:,}".format(row.total_accidents) }}</td>
+            <td>{{ "{:,}".format(row.fatalities) }}</td>
+            <td>{{ "{:,}".format(row.hospitalised) }}</td>
+            <td>{{ row.pct }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% elif submitted %}
+      <p class="fv-placeholder">No results found for the selected filters.</p>
+      {% else %}
+      <p class="fv-placeholder">Select a condition and apply filters to view results.</p>
+      {% endif %}
+    </div>
+
+    <div class="fv-results-section">
+      <p class="fv-results-label">Summary:</p>
+      <div class="fv-summary-box">
+        {% if summary %}
+        <p>{{ summary | safe }}</p>
+        {% else %}
+        <p class="fv-placeholder"></p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const minSlider      = document.getElementById('yearMin');
+  const maxSlider      = document.getElementById('yearMax');
+  const minLabel       = document.getElementById('yearMinLabel');
+  const maxLabel       = document.getElementById('yearMaxLabel');
+  const rangeHighlight = document.getElementById('sliderRange');
+
+  function updateSlider() {
+    let minVal = parseInt(minSlider.value);
+    let maxVal = parseInt(maxSlider.value);
+
+    if (minVal > maxVal) {
+      [minSlider.value, maxSlider.value] = [maxVal, minVal];
+      [minVal, maxVal] = [maxVal, minVal];
+    }
+
+    minLabel.textContent = minVal;
+    maxLabel.textContent = maxVal;
+
+    const min      = parseInt(minSlider.min);
+    const max      = parseInt(minSlider.max);
+    const leftPct  = ((minVal - min) / (max - min)) * 100;
+    const rightPct = ((maxVal - min) / (max - min)) * 100;
+
+    rangeHighlight.style.left  = leftPct  + '%';
+    rangeHighlight.style.width = (rightPct - leftPct) + '%';
+  }
+
+  minSlider.addEventListener('input', updateSlider);
+  maxSlider.addEventListener('input', updateSlider);
+  updateSlider();
+</script>
+{% endblock %}

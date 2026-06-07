@@ -68,6 +68,188 @@ def deepdive():
     """Level 3 — Deep dive page."""
     return render_template("deepdive.html")
 
+@app.route("/focused-view")
+def focused_view():
+    submitted   = "condition" in request.args
+    condition   = request.args.get("condition", "injury")
+    year_min    = int(request.args.get("year_min", 2013))
+    year_max    = int(request.args.get("year_max", 2024))
+    road_types  = request.args.getlist("road_type")
+    speed_zones = request.args.getlist("speed_zone")
+    deg_urbans  = request.args.getlist("deg_urban")
+    lights      = request.args.getlist("light")
+    polices     = request.args.getlist("police")
+    surfaces    = request.args.getlist("surface")
+    atmos_conds = request.args.getlist("atmos")
+
+    CONDITION_CONFIG = {
+        "injury": {
+            "label":  "Injury Level",
+            "select": "i.INJ_LEVEL_DESC",
+            "join":   "JOIN Injury i ON p.INJ_LEVEL = i.INJ_LEVEL",
+            "group":  "i.INJ_LEVEL",
+            "filter": "",
+        },
+        "road_user": {
+            "label":  "Road User Type",
+            "select": "ru.ROAD_USER_TYPE_DESC",
+            "join":   "JOIN Road_User ru ON p.ROAD_USER_TYPE = ru.ROAD_USER_TYPE",
+            "group":  "ru.ROAD_USER_TYPE",
+            "filter": "ru.ROAD_USER_TYPE_DESC != 'Not Known'",
+        },
+        "ejection": {
+            "label":  "Ejection Outcome",
+            "select": "e.EJECTED_DESC",
+            "join":   "JOIN Ejection e ON p.EJECTED_CODE = e.EJECTED_CODE",
+            "group":  "e.EJECTED_CODE",
+            "filter": "e.EJECTED_CODE != 9",
+        },
+        "hospital": {
+            "label":  "Taken to Hospital",
+            "select": "CASE p.TAKEN_HOSPITAL WHEN 'Y' THEN 'Yes' WHEN 'N' THEN 'No' END",
+            "join":   "",
+            "group":  "p.TAKEN_HOSPITAL",
+            "filter": "p.TAKEN_HOSPITAL IN ('Y', 'N')",
+        },
+        "helmet_belt": {
+            "label":  "Helmet / Belt Worn",
+            "select": "hb.HELMET_BELT_DESC",
+            "join":   "JOIN Helmet_Belt hb ON p.HELMET_BELT_WORN = hb.HELMET_BELT_WORN",
+            "group":  "hb.HELMET_BELT_WORN",
+            "filter": "hb.HELMET_BELT_WORN != 9",
+        },
+        "age_group": {
+            "label":  "Age Group",
+            "select": "CASE p.AGE_GROUP WHEN '5-Dec' THEN '5-12' ELSE p.AGE_GROUP END",
+            "join":   "",
+            "group":  "p.AGE_GROUP",
+            "filter": "p.AGE_GROUP IS NOT NULL AND p.AGE_GROUP != '' AND p.AGE_GROUP != 'Unknown'",
+        },
+        "sex": {
+            "label":  "Sex",
+            "select": "CASE p.SEX WHEN 'M' THEN 'Male' WHEN 'F' THEN 'Female' WHEN 'U' THEN 'Unknown' END",
+            "join":   "",
+            "group":  "p.SEX",
+            "filter": "p.SEX IN ('M', 'F', 'U')",
+        },
+    }
+
+    rows    = []
+    summary = ""
+
+    if submitted and condition in CONDITION_CONFIG:
+        cfg = CONDITION_CONFIG[condition]
+
+        where_clauses = [
+            "CAST(SUBSTR(a.ACCIDENT_DATE, -4) AS INTEGER) BETWEEN ? AND ?"
+        ]
+        params = [year_min, year_max]
+
+        if cfg["filter"]:
+            where_clauses.append(cfg["filter"])
+
+        if road_types:
+            where_clauses.append(f"a.ROAD_TYPE IN ({','.join(['?'] * len(road_types))})")
+            params.extend(road_types)
+
+        if speed_zones:
+            where_clauses.append(f"a.SPEED_ZONE IN ({','.join(['?'] * len(speed_zones))})")
+            params.extend([int(s) for s in speed_zones])
+
+        if deg_urbans:
+            where_clauses.append(f"n.DEG_URBAN_NAME IN ({','.join(['?'] * len(deg_urbans))})")
+            params.extend(deg_urbans)
+
+        if lights:
+            where_clauses.append(f"a.LIGHT_CONDITION IN ({','.join(['?'] * len(lights))})")
+            params.extend([int(l) for l in lights])
+
+        if polices:
+            where_clauses.append(f"a.POLICE_ATTEND IN ({','.join(['?'] * len(polices))})")
+            params.extend([int(pl) for pl in polices])
+
+        if surfaces:
+            where_clauses.append(
+                f"EXISTS (SELECT 1 FROM Surface_Cond_Seq scs "
+                f"WHERE scs.ACCIDENT_NO = a.ACCIDENT_NO "
+                f"AND scs.SURFACE_COND IN ({','.join(['?'] * len(surfaces))}))"
+            )
+            params.extend([int(s) for s in surfaces])
+
+        if atmos_conds:
+            where_clauses.append(
+                f"EXISTS (SELECT 1 FROM Atmospheric_Cond_Seq acs "
+                f"WHERE acs.ACCIDENT_NO = a.ACCIDENT_NO "
+                f"AND acs.ATMOSPH_COND IN ({','.join(['?'] * len(atmos_conds))}))"
+            )
+            params.extend([int(ac) for ac in atmos_conds])
+
+        where_sql = " AND ".join(where_clauses)
+
+        sql = f"""
+            SELECT
+                {cfg["select"]}                                              AS condition_value,
+                COUNT(*)                                                     AS total_people,
+                COUNT(DISTINCT p.ACCIDENT_NO)                                AS total_accidents,
+                SUM(CASE WHEN p.INJ_LEVEL = 1 THEN 1 ELSE 0 END)            AS fatalities,
+                SUM(CASE WHEN p.TAKEN_HOSPITAL = 'Y' THEN 1 ELSE 0 END)     AS hospitalised
+            FROM Person p
+            JOIN Accident a   ON p.ACCIDENT_NO = a.ACCIDENT_NO
+            LEFT JOIN Node n  ON a.NODE_ID     = n.NODE_ID
+            {cfg["join"]}
+            WHERE {where_sql}
+            GROUP BY {cfg["group"]}
+            ORDER BY total_people DESC
+        """
+
+        rows = query_db(sql, params)
+
+        if rows:
+            total_people = sum(r["total_people"] for r in rows)
+            for r in rows:
+                r["pct"] = round(100.0 * r["total_people"] / total_people, 1) if total_people else 0
+
+            top = rows[0]
+
+            active_filters = []
+            if road_types:  active_filters.append(f"road types ({', '.join(t.title() for t in road_types)})")
+            if speed_zones: active_filters.append(f"speed zones ({', '.join(speed_zones)} km/h)")
+            if deg_urbans:  active_filters.append("urban classification")
+            if lights:      active_filters.append("light conditions")
+            if polices:     active_filters.append("police attendance")
+            if surfaces:    active_filters.append("road surface")
+            if atmos_conds: active_filters.append("atmospheric conditions")
+
+            filter_text = f", filtered by {' and '.join(active_filters)}," if active_filters else ""
+
+            summary = (
+                f"Between {year_min} and {year_max}{filter_text} "
+                f"{total_people:,} people were recorded across all matched crashes. "
+                f"The most represented {cfg['label'].lower()} was "
+                f"<strong>{top['condition_value']}</strong>, "
+                f"accounting for {top['pct']}% of all involved people "
+                f"({top['total_people']:,} individuals across {top['total_accidents']:,} accidents). "
+                f"Within this group, {top['fatalities']:,} fatalities and "
+                f"{top['hospitalised']:,} hospitalisations were recorded."
+            )
+
+    return render_template(
+        "focused_view_people.html",
+        submitted    = submitted,
+        rows         = rows,
+        summary      = summary,
+        condition    = condition,
+        year_min     = year_min,
+        year_max     = year_max,
+        road_types   = road_types,
+        speed_zones  = speed_zones,
+        deg_urbans   = deg_urbans,
+        lights       = lights,
+        polices      = polices,
+        surfaces     = surfaces,
+        atmos_conds  = atmos_conds,
+    )
+
 @app.route("/mission-statement")
 def mission_statement():
     mission   = query_db("SELECT CONTENT FROM MISSION_CONTENT WHERE SECTION = 'mission'")
