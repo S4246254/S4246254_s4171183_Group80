@@ -16,10 +16,10 @@
       </div>
       <nav class="site-nav">
         <a href="{{ url_for('landing') }}"    class="{% if request.endpoint == 'landing'    %}active{% endif %}">Landing</a>
+        <a href="{{ url_for('mission_statement') }}" class="{% if request.endpoint == 'mission_statement' %}active{% endif %}">Mission</a>
         <a href="{{ url_for('conditions') }}" class="{% if request.endpoint == 'conditions' %}active{% endif %}">Conditions</a>
         <a href="{{ url_for('deepdive') }}"   class="{% if request.endpoint == 'deepdive'   %}active{% endif %}">Deep Dive</a>
         <a href="{{ url_for('focused_view') }}" class="{% if request.endpoint == 'focused_view' %}active{% endif %}">People & Injuries</a>
-        <a href="{{ url_for('mission_statement') }}" class="{% if request.endpoint == 'mission_statement' %}active{% endif %}">Mission</a>
         <a href="{{ url_for('people_hotspot') }}" class="{% if request.endpoint == 'people_hotspot' %}active{% endif %}">Hotspot Map</a>
       </nav>
     </div>
@@ -29,9 +29,9 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="site-footer">
-    <p>Programming Studio Sem 1 2026 &mdash; Sub-Task A &mdash; Road Incidents Victoria</p>
-  </footer>
+<footer class="site-footer">
+  <p>{% block footer_text %}Programming Studio Sem 1 2026 &mdash; Sub-Task A &mdash; Road Incidents Victoria{% endblock %}</p>
+</footer>
 
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   {% block scripts %}{% endblock %}
