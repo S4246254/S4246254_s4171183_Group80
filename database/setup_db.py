@@ -131,8 +131,6 @@ CREATE TABLE IF NOT EXISTS TEAM_MEMBERS (
     STUDENT_ID TEXT NOT NULL
 );
 """
-
-
 def seed_mission(conn: sqlite3.Connection) -> None:
     """Seed mission statement, personas, and team members."""
 
@@ -155,19 +153,24 @@ def seed_mission(conn: sqlite3.Connection) -> None:
                 "wrestling with spreadsheets, and more time is spent improving outcomes.</p>",
             ),
             (
-                "how_to_use",
-                "<p>Use the navigation bar at the top to move between sections of the site.</p>"
-                "<p>The <strong>Conditions</strong> page summarises Victorian crash data by a condition of your choice. "
-                "Select a condition type: road surface, atmospheric condition, or light condition, and set a minimum "
-                "accident threshold, then apply filters to view an aggregated breakdown. Results are displayed as a "
-                "bar chart and a table showing total accidents, fatal incidents, fatal rate, and average severity, "
-                "sorted by total accidents descending.</p>"
-                "<p>The <strong>Deep Dive</strong> page identifies conditions whose accident counts exceed the statewide "
-                "per-condition average, using a nested SQL query to surface above-average risk. Select a condition "
-                "dimension and severity filter to see ranked results alongside a severity index chart that compares "
-                "each condition against the statewide average line.</p>"
-                "<p>Filters can be adjusted and reapplied at any time. All data is drawn from the accident database, "
-                "with unknown and null values excluded from all calculations.</p>",
+                "how_conditions",
+                "<p>Select a condition type (road surface, atmospheric, or light), set a minimum accident threshold, "
+                "and apply to view an aggregated breakdown as a chart and table.</p>",
+            ),
+            (
+                "how_deepdive",
+                "<p>Identifies conditions whose accident counts exceed the statewide average. Select a dimension "
+                "and severity filter to see ranked results alongside a severity index chart.</p>",
+            ),
+            (
+                "how_people",
+                "<p>Filter crash data by people-related conditions such as injury level, road user type, age group, "
+                "and more. Results shown as a table with optional additional filters and worded summary.</p>",
+            ),
+            (
+                "how_hotspot",
+                "<p>Confirm a person-related condition, and then select a time period and condition parameter to visualise location densities across "
+                "Victorian LGAs, ranked by a calculated density index against the statewide average.</p>",
             ),
         ],
     )

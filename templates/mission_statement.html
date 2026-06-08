@@ -11,16 +11,10 @@
   </div>
 </section>
 
-<!-- Cards -->
-<div class="ms-cards-grid">
+<p style="text-align: center; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; font-size: 1.2rem;">Personas</p>
 
-  <!-- How To Use -->
-  <div class="ms-card">
-    <div class="ms-card-title">How to Use</div>
-    <div class="ms-card-body">
-      {{ how_to_use | safe }}
-    </div>
-  </div>
+<!-- Row 1: Personas -->
+<div class="ms-cards-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 1rem;">
 
   <!-- Persona A -->
   <div class="ms-card">
@@ -28,7 +22,6 @@
     {% if persona_a %}
     <div class="ms-card-body ms-persona-body">
       <div class="ms-persona-image">
-        <!-- swap src for actual image path once added to /static -->
         <img src="{{ url_for('static', filename='images/persona_a.jpg') }}" alt="Photo of {{ persona_a.NAME }}" onerror="this.style.display='none'">
       </div>
       <p class="ms-persona-name">{{ persona_a.NAME }}</p>
@@ -53,6 +46,45 @@
       <p class="ms-persona-description">{{ persona_b.DESCRIPTION }}</p>
     </div>
     {% endif %}
+  </div>
+
+</div>
+
+<input type="radio" name="how-carousel" id="hc1" checked hidden>
+<input type="radio" name="how-carousel" id="hc2" hidden>
+<input type="radio" name="how-carousel" id="hc3" hidden>
+<input type="radio" name="how-carousel" id="hc4" hidden>
+
+<p style="text-align: center; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; font-size: 1.2rem;">How to Use ⓘ</p>
+
+<!-- Row 2: How To Use -->
+<div class="ms-carousel">
+
+  <div class="ms-car-prev">
+    <label class="ms-car-btn ms-p2" for="hc1">&#8249;</label>
+    <label class="ms-car-btn ms-p3" for="hc2">&#8249;</label>
+    <label class="ms-car-btn ms-p4" for="hc3">&#8249;</label>
+  </div>
+
+  <div class="ms-carousel-track">
+    <div class="ms-carousel-item">
+      <div class="ms-card"><div class="ms-card-title">Conditions</div><div class="ms-card-body">{{ how_conditions | safe }}</div></div>
+    </div>
+    <div class="ms-carousel-item">
+      <div class="ms-card"><div class="ms-card-title">Deep Dive</div><div class="ms-card-body">{{ how_deepdive | safe }}</div></div>
+    </div>
+    <div class="ms-carousel-item">
+      <div class="ms-card"><div class="ms-card-title">People &amp; Injuries</div><div class="ms-card-body">{{ how_people | safe }}</div></div>
+    </div>
+    <div class="ms-carousel-item">
+      <div class="ms-card"><div class="ms-card-title">Hotspot Map</div><div class="ms-card-body">{{ how_hotspot | safe }}</div></div>
+    </div>
+  </div>
+
+  <div class="ms-car-next">
+    <label class="ms-car-btn ms-n1" for="hc2">&#8250;</label>
+    <label class="ms-car-btn ms-n2" for="hc3">&#8250;</label>
+    <label class="ms-car-btn ms-n3" for="hc4">&#8250;</label>
   </div>
 
 </div>

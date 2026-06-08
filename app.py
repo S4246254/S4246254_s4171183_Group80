@@ -253,19 +253,25 @@ def focused_view():
 @app.route("/mission-statement")
 def mission_statement():
     mission   = query_db("SELECT CONTENT FROM MISSION_CONTENT WHERE SECTION = 'mission'")
-    how_to    = query_db("SELECT CONTENT FROM MISSION_CONTENT WHERE SECTION = 'how_to_use'")
     personas  = query_db("SELECT * FROM PERSONAS ORDER BY PERSONA_KEY ASC")
     team      = query_db("SELECT FULL_NAME, STUDENT_ID FROM TEAM_MEMBERS ORDER BY ID ASC")
+    how_conditions = query_db("SELECT CONTENT FROM MISSION_CONTENT WHERE SECTION = 'how_conditions'")
+    how_deepdive   = query_db("SELECT CONTENT FROM MISSION_CONTENT WHERE SECTION = 'how_deepdive'")
+    how_people     = query_db("SELECT CONTENT FROM MISSION_CONTENT WHERE SECTION = 'how_people'")
+    how_hotspot    = query_db("SELECT CONTENT FROM MISSION_CONTENT WHERE SECTION = 'how_hotspot'")
 
     persona_map = {p["PERSONA_KEY"]: p for p in personas}
 
     return render_template(
         "mission_statement.html",
         mission_content = mission[0]["CONTENT"]  if mission  else "",
-        how_to_use      = how_to[0]["CONTENT"]   if how_to   else "",
         persona_a       = persona_map.get("a"),
         persona_b       = persona_map.get("b"),
         team            = team,
+        how_conditions  = how_conditions[0]["CONTENT"] if how_conditions else "",
+        how_deepdive    = how_deepdive[0]["CONTENT"] if how_deepdive else "",
+        how_people      = how_people[0]["CONTENT"] if how_people else "",
+        how_hotspot     = how_hotspot[0]["CONTENT"] if how_hotspot else "",
     )
 
 @app.route("/people-hotspot")
