@@ -211,7 +211,7 @@ def seed_mission(conn: sqlite3.Connection) -> None:
         "INSERT INTO TEAM_MEMBERS (FULL_NAME, STUDENT_ID) VALUES (?, ?)",
         [
             ("Nevyan John", "s4171183"),
-            ("Augusts Ziebell-Barnes", "s4246254"),
+            ("Augustus Ziebell-Barnes", "s4246254"),
         ],
     )
 

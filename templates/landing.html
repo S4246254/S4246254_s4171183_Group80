@@ -4,12 +4,21 @@
 {% block content %}
 <section class="hero">
   <div class="hero-badge">Level 1 — Sub-Task A</div>
-  <h1>Understanding Road Incidents in Victoria</h1>
-  <p class="hero-sub">
-    Explore data-driven insights into road crashes across Victoria,
-    helping researchers and policy analysts understand the environmental
-    conditions that contribute to road incidents.
-  </p>
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <h1>Understanding Road Incidents in Victoria</h1>
+      <p class="hero-sub">
+        Explore evidence-driven insights into road crashes across Victoria.
+        Filter by road surface, atmospheric and light conditions to identify
+        patterns and high-risk scenarios for safer policy and engineering decisions.
+      </p>
+
+    </div>
+
+    <div class="hero-visual" aria-hidden="true">
+      <img class="hero-logo" src="{{ url_for('static', filename='images/vicroads-logo.svg') }}" alt="VicRoads logo">
+    </div>
+  </div>
 </section>
 
 <!-- Key facts retrieved from database -->
@@ -40,6 +49,21 @@
       <div class="nav-card-icon">&#9650;</div>
       <div class="nav-card-title">Level 3 — Deep dive</div>
       <div class="nav-card-desc">Discover above-average risk conditions using nested SQL queries and severity ranking.</div>
+    </a>
+    <a href="{{ url_for('mission_statement') }}" class="nav-card">
+      <div class="nav-card-icon">&#128221;</div>
+      <div class="nav-card-title">Mission statement</div>
+      <div class="nav-card-desc">Review the project mission, goals and the rationale behind this road safety analysis.</div>
+    </a>
+    <a href="{{ url_for('focused_view') }}" class="nav-card nav-card-amber">
+      <div class="nav-card-icon">&#128100;</div>
+      <div class="nav-card-title">People &amp; Injuries</div>
+      <div class="nav-card-desc">Explore injury and casualty detail across road user groups and understand the people behind the incidents.</div>
+    </a>
+    <a href="{{ url_for('people_hotspot') }}" class="nav-card">
+      <div class="nav-card-icon">&#128205;</div>
+      <div class="nav-card-title">Hotspot map</div>
+      <div class="nav-card-desc">View accident hotspots on a map and identify geographic areas with the highest incidence rates.</div>
     </a>
   </div>
 </section>

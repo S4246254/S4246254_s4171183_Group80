@@ -77,7 +77,7 @@ function renderL3Chart(rows, avgCount) {
           min: 0,
           max: 5,
           ticks: { font: { size: 11 } },
-          title: { display: true, text: 'Avg severity (1=Fatal → 4=PDO)', font: { size: 11 } }
+          title: { display: true, text: 'Avg persons involved per accident', font: { size: 11 } }
         },
         y: { ticks: { font: { size: 11 } } }
       }
@@ -95,7 +95,7 @@ function renderL3Insight(rows, avgCount, dim) {
   box.innerHTML = `<strong>Nested query result:</strong> The statewide average is
     <strong>${fmtNum(Math.round(avgCount))}</strong> accidents per ${dimLabel} condition.
     <strong>${rows.length}</strong> condition(s) exceed this threshold and are shown below,
-    ranked by severity. These represent the highest-risk conditions for your persona to investigate.`;
+    ranked by average people involved. These represent the most impactful conditions for further review.`;
   box.classList.remove('hidden');
 }
 
@@ -103,11 +103,11 @@ function updateSQL(dim) {
   const colMap = { road: 'ROAD_SURFACE', atmos: 'ATMOSPHERIC', light: 'LIGHT_COND' };
   const col = colMap[dim] || 'ROAD_SURFACE';
   document.getElementById('sqlDisplay').textContent =
-`SELECT condition, total_accidents, avg_severity
+`SELECT condition, total_accidents, avg_persons
 FROM (
     SELECT ${col} AS condition,
            COUNT(*) AS total_accidents,
-           AVG(SEVERITY) AS avg_severity
+           AVG(a.NO_PERSONS) AS avg_persons
     FROM ACCIDENT
     GROUP BY ${col}
 ) inner_summary
@@ -116,7 +116,7 @@ WHERE total_accidents > (
     FROM (SELECT COUNT(*) AS cond_count
           FROM ACCIDENT GROUP BY ${col})
 )
-ORDER BY avg_severity ASC`;
+ORDER BY avg_persons ASC`;
 }
 
 async function loadLevel3() {

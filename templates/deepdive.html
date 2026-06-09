@@ -23,10 +23,10 @@
       </select>
     </div>
     <div class="filter-group">
-      <label for="l3sev">Severity filter</label>
+      <label for="l3sev">Fatality filter</label>
       <select id="l3sev">
         <option value="false">All above average</option>
-        <option value="true">High severity only (avg &lt; 2.5)</option>
+        <option value="true">Only conditions with fatalities</option>
       </select>
     </div>
     <button class="btn-primary" onclick="loadLevel3()">Apply filters</button>
@@ -35,10 +35,10 @@
   <!-- SQL pseudocode shown to user -->
   <div class="sql-box">
     <div class="sql-label">Nested query logic</div>
-    <pre id="sqlDisplay">SELECT condition, total, avg_severity
-FROM (inner summary per condition)
-WHERE total &gt; (SELECT AVG(count) FROM (grouped counts))
-ORDER BY avg_severity ASC</pre>
+    <pre id="sqlDisplay">SELECT condition, total_accidents, avg_persons
+  FROM (inner summary per condition)
+  WHERE total_accidents &gt; (SELECT AVG(count) FROM (grouped counts))
+  ORDER BY avg_persons ASC</pre>
   </div>
 
   <div id="l3-insight" class="insight-box hidden"></div>
@@ -52,7 +52,7 @@ ORDER BY avg_severity ASC</pre>
           <th>Total accidents</th>
           <th>Fatal incidents</th>
           <th>Fatal rate</th>
-          <th>Avg severity</th>
+          <th>Avg persons</th>
           <th>Risk level</th>
         </tr>
       </thead>
@@ -63,7 +63,7 @@ ORDER BY avg_severity ASC</pre>
   </div>
 
   <div class="chart-wrap" style="margin-top: 2rem;">
-    <h3 class="chart-title">Severity index vs statewide average</h3>
+    <h3 class="chart-title">Avg persons per accident vs statewide average</h3>
     <div class="chart-legend">
       <span class="legend-item"><span class="legend-dot red"></span>High risk (above avg)</span>
       <span class="legend-item"><span class="legend-dot blue"></span>Moderate risk (above avg)</span>
@@ -73,8 +73,8 @@ ORDER BY avg_severity ASC</pre>
   </div>
   <p class="table-note">
     Only conditions exceeding the statewide average accident count are shown.
-    Avg severity: 1 = Fatal, 2 = Serious injury, 3 = Other injury, 4 = Property damage only.
-    Lower avg severity score = more severe conditions.
+    Avg persons is the mean number of people involved per accident for each condition.
+    Conditions shown here exceed the statewide average accident count for that dimension.
   </p>
 </section>
 {% endblock %}
