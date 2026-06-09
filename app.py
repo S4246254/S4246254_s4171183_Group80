@@ -17,7 +17,17 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from database.setup_db import get_db, setup, DB_PATH, DDL_MISSION_CONTENT, DDL_PERSONAS, DDL_TEAM_MEMBERS, seed_mission
+from database.setup_db import (
+    get_db,
+    setup,
+    DB_PATH,
+    DDL_FACTS,
+    DDL_MISSION_CONTENT,
+    DDL_PERSONAS,
+    DDL_TEAM_MEMBERS,
+    seed_mission,
+    seed_facts,
+)
 
 app = Flask(__name__)
 
@@ -26,10 +36,20 @@ if not os.path.exists(DB_PATH):
     setup()
 else:
     _conn = get_db()
+    _conn.execute(DDL_FACTS)
     _conn.execute(DDL_MISSION_CONTENT)
     _conn.execute(DDL_PERSONAS)
     _conn.execute(DDL_TEAM_MEMBERS)
-    seed_mission(_conn)
+    _conn.commit()
+
+    _has_facts = _conn.execute("SELECT COUNT(*) FROM FACTS").fetchone()[0]
+    if not _has_facts:
+        seed_facts(_conn)
+
+    _has_mission = _conn.execute("SELECT COUNT(*) FROM MISSION_CONTENT").fetchone()[0]
+    if not _has_mission:
+        seed_mission(_conn)
+
     _conn.commit()
     _conn.close()
 
@@ -72,8 +92,11 @@ def deepdive():
 def focused_view():
     submitted   = "condition" in request.args
     condition   = request.args.get("condition", "injury")
-    year_min    = int(request.args.get("year_min", 2013))
-    year_max    = int(request.args.get("year_max", 2024))
+    try:
+        year_min = int(request.args.get("year_min", 2013))
+        year_max = int(request.args.get("year_max", 2024))
+    except (ValueError, TypeError):
+        year_min, year_max = 2013, 2024
     road_types  = request.args.getlist("road_type")
     speed_zones = request.args.getlist("speed_zone")
     deg_urbans  = request.args.getlist("deg_urban")
@@ -152,6 +175,7 @@ def focused_view():
             where_clauses.append(f"a.ROAD_TYPE IN ({','.join(['?'] * len(road_types))})")
             params.extend(road_types)
 
+        speed_zones = [s for s in speed_zones if s.lstrip('-').isdigit()]
         if speed_zones:
             where_clauses.append(f"a.SPEED_ZONE IN ({','.join(['?'] * len(speed_zones))})")
             params.extend([int(s) for s in speed_zones])
@@ -160,14 +184,17 @@ def focused_view():
             where_clauses.append(f"n.DEG_URBAN_NAME IN ({','.join(['?'] * len(deg_urbans))})")
             params.extend(deg_urbans)
 
+        lights = [l for l in lights if l.lstrip('-').isdigit()]
         if lights:
             where_clauses.append(f"a.LIGHT_CONDITION IN ({','.join(['?'] * len(lights))})")
             params.extend([int(l) for l in lights])
 
+        polices = [pl for pl in polices if pl.lstrip('-').isdigit()]
         if polices:
             where_clauses.append(f"a.POLICE_ATTEND IN ({','.join(['?'] * len(polices))})")
             params.extend([int(pl) for pl in polices])
 
+        surfaces = [s for s in surfaces if s.lstrip('-').isdigit()]
         if surfaces:
             where_clauses.append(
                 f"EXISTS (SELECT 1 FROM Surface_Cond_Seq scs "
@@ -176,6 +203,7 @@ def focused_view():
             )
             params.extend([int(s) for s in surfaces])
 
+        atmos_conds = [ac for ac in atmos_conds if ac.lstrip('-').isdigit()]
         if atmos_conds:
             where_clauses.append(
                 f"EXISTS (SELECT 1 FROM Atmospheric_Cond_Seq acs "
@@ -323,8 +351,11 @@ def people_hotspot():
 
     condition       = request.args.get("condition", "injury")
     condition_value = request.args.get("condition_value", "")
-    year_min        = int(request.args.get("year_min", 2013))
-    year_max        = int(request.args.get("year_max", 2024))
+    try:
+        year_min = int(request.args.get("year_min", 2013))
+        year_max = int(request.args.get("year_max", 2024))
+    except (ValueError, TypeError):
+        year_min, year_max = 2013, 2024
     show_second = "select_condition" in request.args
     submitted   = bool(request.args.get("condition_value", "")) and "select_condition" not in request.args and "condition" in request.args
     condition_chosen = "condition" in request.args
@@ -502,7 +533,10 @@ def api_level2():
     if dim not in VALID_DIMS:
         return jsonify({"error": "Invalid dimension"}), 400
 
-    min_count = max(0, int(request.args.get("min_count", 0)))
+    try:
+        min_count = max(0, int(request.args.get("min_count", 0)))
+    except (ValueError, TypeError):
+        return jsonify({"error": "min_count must be an integer"}), 400
 
     join_sql, group_col, label_col, exclude_filter = DIM_JOIN[dim]
 
